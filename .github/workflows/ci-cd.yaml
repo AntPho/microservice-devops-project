@@ -29,24 +29,43 @@ jobs:
       - name: Build and push Docker images
         run: |
           TAG="sha-${{ github.sha }}"
-          # Convertir le nom du repo en minuscules
           REPO="ghcr.io/${{ github.repository }}"
           REPO_LOWER=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
           
           echo "Repository: $REPO_LOWER"
           
-          # Parcourir chaque sous-dossier de src/
+          # Fonction pour trouver le Dockerfile d'un service
+          find_dockerfile() {
+            local service_dir=$1
+            if [ -f "$service_dir/Dockerfile" ]; then
+              echo "$service_dir"
+            elif [ -f "$service_dir/src/Dockerfile" ]; then
+              echo "$service_dir/src"
+            else
+              echo ""
+            fi
+          }
+          
+          # Parcourir tous les services
           for service in src/*; do
             if [ -d "$service" ]; then
               servicename=$(basename "$service")
-              echo "Building $servicename..."
-              
-              # Convertir le nom du service en minuscules aussi (par sécurité)
               servicename_lower=$(echo "$servicename" | tr '[:upper:]' '[:lower:]')
               
-              docker build -t $REPO_LOWER/$servicename_lower:$TAG -t $REPO_LOWER/$servicename_lower:latest ./$service
-              docker push $REPO_LOWER/$servicename_lower:$TAG
-              docker push $REPO_LOWER/$servicename_lower:latest
+              # Chercher le Dockerfile
+              dockerfile_path=$(find_dockerfile "$service")
+              
+              if [ -n "$dockerfile_path" ]; then
+                echo "✅ Building $servicename from $dockerfile_path..."
+                docker build -t $REPO_LOWER/$servicename_lower:$TAG -t $REPO_LOWER/$servicename_lower:latest "$dockerfile_path"
+                docker push $REPO_LOWER/$servicename_lower:$TAG
+                docker push $REPO_LOWER/$servicename_lower:latest
+              else
+                echo "❌ Pas de Dockerfile trouvé pour $servicename"
+                # Afficher la structure pour debug
+                echo "Structure de $service:"
+                ls -la "$service"
+              fi
             fi
           done
 
