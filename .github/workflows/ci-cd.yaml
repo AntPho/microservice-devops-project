@@ -29,15 +29,24 @@ jobs:
       - name: Build and push Docker images
         run: |
           TAG="sha-${{ github.sha }}"
+          # Convertir le nom du repo en minuscules
           REPO="ghcr.io/${{ github.repository }}"
-          # Parcourir chaque sous-dossier de src/ (chaque service)
+          REPO_LOWER=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+          
+          echo "Repository: $REPO_LOWER"
+          
+          # Parcourir chaque sous-dossier de src/
           for service in src/*; do
             if [ -d "$service" ]; then
               servicename=$(basename "$service")
               echo "Building $servicename..."
-              docker build -t $REPO/$servicename:$TAG -t $REPO/$servicename:latest ./$service
-              docker push $REPO/$servicename:$TAG
-              docker push $REPO/$servicename:latest
+              
+              # Convertir le nom du service en minuscules aussi (par sécurité)
+              servicename_lower=$(echo "$servicename" | tr '[:upper:]' '[:lower:]')
+              
+              docker build -t $REPO_LOWER/$servicename_lower:$TAG -t $REPO_LOWER/$servicename_lower:latest ./$service
+              docker push $REPO_LOWER/$servicename_lower:$TAG
+              docker push $REPO_LOWER/$servicename_lower:latest
             fi
           done
 
@@ -45,17 +54,18 @@ jobs:
         run: |
           TAG="sha-${{ github.sha }}"
           REPO="ghcr.io/${{ github.repository }}"
+          REPO_LOWER=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+          
           # Mettre à jour chaque déploiement avec la nouvelle image
-          kubectl set image deployment/frontend server=$REPO/frontend:$TAG
-          kubectl set image deployment/cartservice server=$REPO/cartservice:$TAG
-          kubectl set image deployment/productcatalogservice server=$REPO/productcatalogservice:$TAG
-          kubectl set image deployment/currencyservice server=$REPO/currencyservice:$TAG
-          kubectl set image deployment/paymentservice server=$REPO/paymentservice:$TAG
-          kubectl set image deployment/shippingservice server=$REPO/shippingservice:$TAG
-          kubectl set image deployment/emailservice server=$REPO/emailservice:$TAG
-          kubectl set image deployment/checkoutservice server=$REPO/checkoutservice:$TAG
-          kubectl set image deployment/recommendationservice server=$REPO/recommendationservice:$TAG
-          kubectl set image deployment/adservice server=$REPO/adservice:$TAG
-          kubectl set image deployment/loadgenerator main=$REPO/loadgenerator:$TAG
-
-          echo "Déploiements mis à jour."
+          kubectl set image deployment/frontend server=$REPO_LOWER/frontend:$TAG
+          kubectl set image deployment/cartservice server=$REPO_LOWER/cartservice:$TAG
+          kubectl set image deployment/productcatalogservice server=$REPO_LOWER/productcatalogservice:$TAG
+          kubectl set image deployment/currencyservice server=$REPO_LOWER/currencyservice:$TAG
+          kubectl set image deployment/paymentservice server=$REPO_LOWER/paymentservice:$TAG
+          kubectl set image deployment/shippingservice server=$REPO_LOWER/shippingservice:$TAG
+          kubectl set image deployment/emailservice server=$REPO_LOWER/emailservice:$TAG
+          kubectl set image deployment/checkoutservice server=$REPO_LOWER/checkoutservice:$TAG
+          kubectl set image deployment/recommendationservice server=$REPO_LOWER/recommendationservice:$TAG
+          kubectl set image deployment/adservice server=$REPO_LOWER/adservice:$TAG
+          kubectl set image deployment/loadgenerator main=$REPO_LOWER/loadgenerator:$TAG
+          echo "Déploiements mis à jour avec $REPO_LOWER"
