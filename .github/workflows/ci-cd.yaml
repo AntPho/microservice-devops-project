@@ -2,18 +2,17 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
-# Permissions pour le GITHUB_TOKEN
 permissions:
   contents: read
   packages: write
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted   # important : utilise le runner auto-hébergé
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
@@ -34,8 +33,8 @@ jobs:
           
           echo "Repository: $REPO_LOWER"
           
-          # Fonction pour trouver le Dockerfile d'un service
-          find_dockerfile() {
+          # Fonction pour trouver le chemin du Dockerfile
+          find_dockerfile_path() {
             local service_dir=$1
             if [ -f "$service_dir/Dockerfile" ]; then
               echo "$service_dir"
@@ -46,26 +45,41 @@ jobs:
             fi
           }
           
-          # Parcourir tous les services
-          for service in src/*; do
-            if [ -d "$service" ]; then
-              servicename=$(basename "$service")
-              servicename_lower=$(echo "$servicename" | tr '[:upper:]' '[:lower:]')
+          # Liste des services à builder (basée sur les manifests)
+          services=(
+            "adservice"
+            "cartservice"
+            "checkoutservice"
+            "currencyservice"
+            "emailservice"
+            "frontend"
+            "loadgenerator"
+            "paymentservice"
+            "productcatalogservice"
+            "recommendationservice"
+            "shippingservice"
+          )
+          
+          for service in "${services[@]}"; do
+            service_path="src/$service"
+            if [ ! -d "$service_path" ]; then
+              echo "⚠️  Dossier $service_path n'existe pas, ignoré"
+              continue
+            fi
+            
+            dockerfile_path=$(find_dockerfile_path "$service_path")
+            
+            if [ -n "$dockerfile_path" ]; then
+              echo "✅ Building $service from $dockerfile_path..."
+              docker build -t $REPO_LOWER/$service:$TAG -t $REPO_LOWER/$service:latest "$dockerfile_path"
               
-              # Chercher le Dockerfile
-              dockerfile_path=$(find_dockerfile "$service")
-              
-              if [ -n "$dockerfile_path" ]; then
-                echo "✅ Building $servicename from $dockerfile_path..."
-                docker build -t $REPO_LOWER/$servicename_lower:$TAG -t $REPO_LOWER/$servicename_lower:latest "$dockerfile_path"
-                docker push $REPO_LOWER/$servicename_lower:$TAG
-                docker push $REPO_LOWER/$servicename_lower:latest
-              else
-                echo "❌ Pas de Dockerfile trouvé pour $servicename"
-                # Afficher la structure pour debug
-                echo "Structure de $service:"
-                ls -la "$service"
-              fi
+              echo "⏫ Pushing $service..."
+              docker push $REPO_LOWER/$service:$TAG
+              docker push $REPO_LOWER/$service:latest
+            else
+              echo "❌ Pas de Dockerfile trouvé pour $service"
+              echo "   Contenu de $service_path:"
+              ls -la "$service_path"
             fi
           done
 
@@ -75,16 +89,44 @@ jobs:
           REPO="ghcr.io/${{ github.repository }}"
           REPO_LOWER=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
           
-          # Mettre à jour chaque déploiement avec la nouvelle image
-          kubectl set image deployment/frontend server=$REPO_LOWER/frontend:$TAG
-          kubectl set image deployment/cartservice server=$REPO_LOWER/cartservice:$TAG
-          kubectl set image deployment/productcatalogservice server=$REPO_LOWER/productcatalogservice:$TAG
-          kubectl set image deployment/currencyservice server=$REPO_LOWER/currencyservice:$TAG
-          kubectl set image deployment/paymentservice server=$REPO_LOWER/paymentservice:$TAG
-          kubectl set image deployment/shippingservice server=$REPO_LOWER/shippingservice:$TAG
-          kubectl set image deployment/emailservice server=$REPO_LOWER/emailservice:$TAG
-          kubectl set image deployment/checkoutservice server=$REPO_LOWER/checkoutservice:$TAG
-          kubectl set image deployment/recommendationservice server=$REPO_LOWER/recommendationservice:$TAG
-          kubectl set image deployment/adservice server=$REPO_LOWER/adservice:$TAG
-          kubectl set image deployment/loadgenerator main=$REPO_LOWER/loadgenerator:$TAG
-          echo "Déploiements mis à jour avec $REPO_LOWER"
+          echo "🔄 Mise à jour des déploiements avec l'image $REPO_LOWER:*:$TAG"
+          
+          # Liste des déploiements à mettre à jour
+          deployments=(
+            "adservice"
+            "cartservice"
+            "checkoutservice"
+            "currencyservice"
+            "emailservice"
+            "frontend"
+            "loadgenerator"
+            "paymentservice"
+            "productcatalogservice"
+            "recommendationservice"
+            "shippingservice"
+          )
+          
+          for deployment in "${deployments[@]}"; do
+            # Déterminer le nom du conteneur (généralement "server" sauf pour loadgenerator)
+            if [ "$deployment" = "loadgenerator" ]; then
+              container="main"
+            else
+              container="server"
+            fi
+            
+            echo "🔄 Mise à jour de $deployment (conteneur: $container)..."
+            if kubectl set image deployment/$deployment $container=$REPO_LOWER/$deployment:$TAG; then
+              echo "   ✅ $deployment mis à jour"
+            else
+              echo "   ⚠️  Échec de la mise à jour de $deployment (peut-être n'existe pas?)"
+            fi
+          done
+          
+          echo "⏳ Attente du redéploiement..."
+          for deployment in "${deployments[@]}"; do
+            echo "   Vérification de $deployment..."
+            kubectl rollout status deployment/$deployment --timeout=60s || true
+          done
+          
+          echo "✅ Déploiement terminé"
+          kubectl get pods
