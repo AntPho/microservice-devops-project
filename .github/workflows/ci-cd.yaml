@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Permissions pour le GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted   # important : utilise le runner auto-hébergé
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker images
+        run: |
+          TAG="sha-${{ github.sha }}"
+          REPO="ghcr.io/${{ github.repository }}"
+          # Parcourir chaque sous-dossier de src/ (chaque service)
+          for service in src/*; do
+            if [ -d "$service" ]; then
+              servicename=$(basename "$service")
+              echo "Building $servicename..."
+              docker build -t $REPO/$servicename:$TAG -t $REPO/$servicename:latest ./$service
+              docker push $REPO/$servicename:$TAG
+              docker push $REPO/$servicename:latest
+            fi
+          done
+
+      - name: Deploy to Kubernetes
+        run: |
+          TAG="sha-${{ github.sha }}"
+          REPO="ghcr.io/${{ github.repository }}"
+          # Mettre à jour chaque déploiement avec la nouvelle image
+          kubectl set image deployment/frontend server=$REPO/frontend:$TAG
+          kubectl set image deployment/cartservice server=$REPO/cartservice:$TAG
+          kubectl set image deployment/productcatalogservice server=$REPO/productcatalogservice:$TAG
+          kubectl set image deployment/currencyservice server=$REPO/currencyservice:$TAG
+          kubectl set image deployment/paymentservice server=$REPO/paymentservice:$TAG
+          kubectl set image deployment/shippingservice server=$REPO/shippingservice:$TAG
+          kubectl set image deployment/emailservice server=$REPO/emailservice:$TAG
+          kubectl set image deployment/checkoutservice server=$REPO/checkoutservice:$TAG
+          kubectl set image deployment/recommendationservice server=$REPO/recommendationservice:$TAG
+          kubectl set image deployment/adservice server=$REPO/adservice:$TAG
+          kubectl set image deployment/loadgenerator main=$REPO/loadgenerator:$TAG
+
+          echo "Déploiements mis à jour."
