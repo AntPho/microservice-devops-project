@@ -78,23 +78,15 @@ jobs:
             kubectl rollout status deployment/$deployment --timeout=120s || true
           done
 
-      # 🌐 Smoke test (important)
-      - name: Smoke test
-        run: |
-          echo "🌐 Getting frontend IP..."
+     - name: Setup kubeconfig
+       run: |
+        export KUBECONFIG=/home/ubuntu/.kube/config
 
-          FRONTEND_IP=$(kubectl get svc frontend-external \
-            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+     - name: Smoke test
+       run: |
+        FRONTEND_IP=$(kubectl get svc frontend-external \
+          -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-          echo "Frontend IP: $FRONTEND_IP"
+        echo "Frontend IP: $FRONTEND_IP"
 
-          if [ -z "$FRONTEND_IP" ]; then
-            echo "❌ No external IP found"
-            exit 1
-          fi
-
-          echo "🚀 Testing application..."
-
-          curl -f http://$FRONTEND_IP || exit 1
-
-          echo "✅ Application is reachable"
+        curl -f http://$FRONTEND_IP || exit 1
