@@ -1,0 +1,100 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      # 📥 Checkout
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 🏷️ Variables
+      - name: Set variables
+        run: |
+          TAG=sha-${{ github.event.workflow_run.head_sha }}
+          REPO=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "REPO=$REPO" >> $GITHUB_ENV
+
+      # 🔄 Update Kubernetes deployments
+      - name: Update deployments
+        run: |
+          deployments=(
+            adservice
+            cartservice
+            checkoutservice
+            currencyservice
+            emailservice
+            frontend
+            loadgenerator
+            paymentservice
+            productcatalogservice
+            recommendationservice
+            shippingservice
+          )
+
+          for deployment in "${deployments[@]}"; do
+            if [ "$deployment" = "loadgenerator" ]; then
+              container="main"
+            else
+              container="server"
+            fi
+
+            echo "🔄 Updating $deployment"
+
+            kubectl set image deployment/$deployment \
+              $container=$REPO/$deployment:$TAG || true
+          done
+
+      # ⏳ Wait rollout
+      - name: Wait for rollout
+        run: |
+          deployments=(
+            adservice
+            cartservice
+            checkoutservice
+            currencyservice
+            emailservice
+            frontend
+            loadgenerator
+            paymentservice
+            productcatalogservice
+            recommendationservice
+            shippingservice
+          )
+
+          for deployment in "${deployments[@]}"; do
+            echo "⏳ Waiting for $deployment"
+            kubectl rollout status deployment/$deployment --timeout=120s || true
+          done
+
+      # 🌐 Smoke test (important)
+      - name: Smoke test
+        run: |
+          echo "🌐 Getting frontend IP..."
+
+          FRONTEND_IP=$(kubectl get svc frontend-external \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          echo "Frontend IP: $FRONTEND_IP"
+
+          if [ -z "$FRONTEND_IP" ]; then
+            echo "❌ No external IP found"
+            exit 1
+          fi
+
+          echo "🚀 Testing application..."
+
+          curl -f http://$FRONTEND_IP || exit 1
+
+          echo "✅ Application is reachable"

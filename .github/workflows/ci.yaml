@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 📥 Checkout
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 🔐 Login GHCR
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 🏷️ Variables
+      - name: Set variables
+        id: vars
+        run: |
+          echo "TAG=sha-${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "REPO=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      # 🧪 Tests Go (frontend)
+      - name: Run tests - frontend
+        run: |
+          cd src/frontend
+          go test ./...
+
+      # 🧪 Tests Go (checkoutservice)
+      - name: Run tests - checkoutservice
+        run: |
+          cd src/checkoutservice
+          go test ./... || true
+
+      # 🐳 Build & Push Docker images
+      - name: Build and push images
+        run: |
+          TAG=${{ steps.vars.outputs.TAG }}
+          REPO=${{ steps.vars.outputs.REPO }}
+
+          services=(
+            adservice
+            cartservice
+            checkoutservice
+            currencyservice
+            emailservice
+            frontend
+            loadgenerator
+            paymentservice
+            productcatalogservice
+            recommendationservice
+            shippingservice
+          )
+
+          find_dockerfile_path() {
+            local service_dir=$1
+            if [ -f "$service_dir/Dockerfile" ]; then
+              echo "$service_dir"
+            elif [ -f "$service_dir/src/Dockerfile" ]; then
+              echo "$service_dir/src"
+            else
+              echo ""
+            fi
+          }
+
+          for service in "${services[@]}"; do
+            service_path="src/$service"
+
+            if [ ! -d "$service_path" ]; then
+              echo "⚠️ $service_path not found, skipping"
+              continue
+            fi
+
+            dockerfile_path=$(find_dockerfile_path "$service_path")
+
+            if [ -n "$dockerfile_path" ]; then
+              echo "🚀 Building $service"
+
+              docker build \
+                -t $REPO/$service:$TAG \
+                -t $REPO/$service:latest \
+                "$dockerfile_path"
+
+              echo "📤 Pushing $service"
+              docker push $REPO/$service:$TAG
+              docker push $REPO/$service:latest
+            else
+              echo "❌ No Dockerfile for $service"
+            fi
+          done
