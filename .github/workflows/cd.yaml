@@ -61,8 +61,11 @@ jobs:
 
       - name: Smoke test
         run: |
-          FRONTEND_IP=$(kubectl get svc frontend-external \
-            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "🌐 Getting frontend access..."
 
-          echo "Frontend IP: $FRONTEND_IP"
-          curl -f http://$FRONTEND_IP || exit 1
+          NODE_IP=$(curl -s ifconfig.me)
+          NODE_PORT=$(kubectl get svc frontend-external -o jsonpath='{.spec.ports[0].nodePort}')
+
+          echo "Frontend URL: http://$NODE_IP:$NODE_PORT"
+
+          curl -f http://$NODE_IP:$NODE_PORT || exit 1
