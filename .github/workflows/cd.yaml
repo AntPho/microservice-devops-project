@@ -59,13 +59,55 @@ jobs:
             kubectl rollout status deployment/$deployment --timeout=60s || true
           done
 
-      - name: Smoke test
+      - name: Health check after deployment
         run: |
-          echo "🌐 Getting frontend access..."
-
+          echo "🌐 Vérification de la santé des services..."
+          
+          # Attendre que les pods soient prêts
+          kubectl wait --for=condition=ready pod -l app=frontend --timeout=120s
+          
+          # Tester l'API frontend
           NODE_IP=$(curl -s ifconfig.me)
           NODE_PORT=$(kubectl get svc frontend-external -o jsonpath='{.spec.ports[0].nodePort}')
-
+          
           echo "Frontend URL: http://$NODE_IP:$NODE_PORT"
+          
+          # Vérifier que l'application répond
+          curl -f -s -o /dev/null "http://$NODE_IP:$NODE_PORT" || exit 1
+          
+          echo "✅ Health check passed"
 
-          curl -f http://$NODE_IP:$NODE_PORT || exit 1
+      - name: Smoke test - Check critical services
+        run: |
+          echo "🔍 Smoke test sur les services critiques..."
+          
+          # Vérifier que le frontend a un message
+          NODE_IP=$(curl -s ifconfig.me)
+          NODE_PORT=$(kubectl get svc frontend-external -o jsonpath='{.spec.ports[0].nodePort}')
+          
+          PAGE=$(curl -s "http://$NODE_IP:$NODE_PORT")
+          if echo "$PAGE" | grep -q "Online Boutique"; then
+            echo "✅ Frontend OK"
+          else
+            echo "❌ Frontend ne répond pas correctement"
+            exit 1
+          fi
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "⚠️ Déploiement échoué, rollback en cours..."
+          
+          for deployment in frontend checkoutservice cartservice; do
+            echo "Rollback $deployment..."
+            kubectl rollout undo deployment/$deployment
+          done
+          
+          echo "✅ Rollback effectué"
+
+      - name: Deployment status
+        if: success()
+        run: |
+          echo "✅ Déploiement réussi !"
+          echo "📊 Stats:"
+          kubectl get pods

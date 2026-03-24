@@ -101,3 +101,25 @@ jobs:
               echo "❌ No Dockerfile for $service"
             fi
           done
+
+      # 🔒 Scan de sécurité avec Trivy
+      - name: Scan images with Trivy
+        run: |
+          TAG=${{ steps.vars.outputs.TAG }}
+          REPO=${{ steps.vars.outputs.REPO }}
+          
+          # Installer Trivy
+          wget -q https://github.com/aquasecurity/trivy/releases/download/v0.50.0/trivy_0.50.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+          
+          services=(
+            frontend
+            checkoutservice
+            productcatalogservice
+            cartservice
+          )
+          
+          for service in "${services[@]}"; do
+            echo "🔍 Scanning $service..."
+            trivy image --severity HIGH,CRITICAL --exit-code 0 $REPO/$service:$TAG
+          done
