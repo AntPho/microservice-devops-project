@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$BUILDPLATFORM golang:1.25.8-alpine@sha256:d9b2e14101f27ec8d09674cd01186798d227bb0daec90e032aeb1cd22ac0f029 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.8-alpine
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
