@@ -80,29 +80,24 @@ jobs:
 
           for service in "${services[@]}"; do
             service_path="src/$service"
-
             if [ ! -d "$service_path" ]; then
               echo "⚠️ $service_path not found, skipping"
               continue
             fi
 
             dockerfile_path=$(find_dockerfile_path "$service_path")
-
             if [ -n "$dockerfile_path" ]; then
               echo "🚀 Building $service"
               if echo "$go_services" | grep -q "$service"; then
                 echo "   Forcing --no-cache for $service"
                 docker build --no-cache -t $REPO/$service:$TAG -t $REPO/$service:latest "$dockerfile_path"
               else
+                docker build -t $REPO/$service:$TAG -t $REPO/$service:latest "$dockerfile_path"
+              fi
 
-                docker build \
-                  -t $REPO/$service:$TAG \
-                  -t $REPO/$service:latest \
-                  "$dockerfile_path"
-
-                echo "📤 Pushing $service"
-                docker push $REPO/$service:$TAG
-                docker push $REPO/$service:latest
+              echo "📤 Pushing $service"
+              docker push $REPO/$service:$TAG
+              docker push $REPO/$service:latest
             else
               echo "❌ No Dockerfile for $service"
             fi
