@@ -95,14 +95,14 @@ jobs:
                 docker build --no-cache -t $REPO/$service:$TAG -t $REPO/$service:latest "$dockerfile_path"
               else
 
-              docker build \
-                -t $REPO/$service:$TAG \
-                -t $REPO/$service:latest \
-                "$dockerfile_path"
+                docker build \
+                  -t $REPO/$service:$TAG \
+                  -t $REPO/$service:latest \
+                  "$dockerfile_path"
 
-              echo "📤 Pushing $service"
-              docker push $REPO/$service:$TAG
-              docker push $REPO/$service:latest
+                echo "📤 Pushing $service"
+                docker push $REPO/$service:$TAG
+                docker push $REPO/$service:latest
             else
               echo "❌ No Dockerfile for $service"
             fi
