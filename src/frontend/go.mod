@@ -2,8 +2,6 @@ module github.com/GoogleCloudPlatform/microservices-demo/src/frontend
 
 go 1.25.8
 
-toolchain go1.25.8
-
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/profiler v0.4.3
