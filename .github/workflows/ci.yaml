@@ -65,6 +65,8 @@ jobs:
             shippingservice
           )
 
+          go_services="frontend checkoutservice productcatalogservice"
+
           find_dockerfile_path() {
             local service_dir=$1
             if [ -f "$service_dir/Dockerfile" ]; then
@@ -88,6 +90,10 @@ jobs:
 
             if [ -n "$dockerfile_path" ]; then
               echo "🚀 Building $service"
+              if echo "$go_services" | grep -q "$service"; then
+                echo "   Forcing --no-cache for $service"
+                docker build --no-cache -t $REPO/$service:$TAG -t $REPO/$service:latest "$dockerfile_path"
+              else
 
               docker build \
                 -t $REPO/$service:$TAG \
