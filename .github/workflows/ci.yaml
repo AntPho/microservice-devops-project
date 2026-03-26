@@ -123,6 +123,9 @@ jobs:
           for service in "${services[@]}"; do
             echo "🔍 Scanning $service..."
 
+            echo "⬇️ Pulling image..."
+            docker pull $REPO/$service:$TAG || trivy_failed=1
+
             trivy image --severity HIGH,CRITICAL $REPO/$service:$TAG || trivy_failed=1
           done
 
