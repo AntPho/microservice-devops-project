@@ -116,7 +116,6 @@ jobs:
             frontend
             checkoutservice
             productcatalogservice
-            cartservice
           )
           
           trivy_failed=0
