@@ -121,5 +121,5 @@ jobs:
           
           for service in "${services[@]}"; do
             echo "🔍 Scanning $service..."
-            trivy image --severity HIGH,CRITICAL --exit-code 0 $REPO/$service:$TAG
+            trivy image --severity HIGH,CRITICAL --exit-code 1 $REPO/$service:$TAG
           done
