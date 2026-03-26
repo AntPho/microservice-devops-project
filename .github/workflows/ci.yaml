@@ -108,7 +108,8 @@ jobs:
         run: |
           TAG=${{ steps.vars.outputs.TAG }}
           REPO=${{ steps.vars.outputs.REPO }}
-          
+          echo "TAG is: $TAG"
+
           # Installer Trivy
           wget -q https://github.com/aquasecurity/trivy/releases/download/v0.50.0/trivy_0.50.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
@@ -121,13 +122,20 @@ jobs:
           
           trivy_failed=0
 
+          set -x   # print each command as it's executed
+
           for service in "${services[@]}"; do
             echo "🔍 Scanning $service..."
-
             echo "⬇️ Pulling image..."
-            docker pull $REPO/$service:$TAG || trivy_failed=1
-
-            trivy image --severity HIGH,CRITICAL $REPO/$service:$TAG || trivy_failed=1
+            docker pull "$REPO/$service:$TAG" || {
+              echo "Pull failed with exit $?";
+              trivy_failed=1;
+            }
+            trivy image --severity HIGH,CRITICAL "$REPO/$service:$TAG" || {
+              echo "Trivy failed with exit $?";
+              trivy_failed=1;
+            }
           done
 
-          exit $trivy_failed
+          echo "Final trivy_failed=$trivy_failed"
+          exit "$trivy_failed"
