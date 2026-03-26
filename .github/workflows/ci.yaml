@@ -119,7 +119,12 @@ jobs:
             cartservice
           )
           
+          trivy_failed=0
+
           for service in "${services[@]}"; do
             echo "🔍 Scanning $service..."
-            trivy image --severity HIGH,CRITICAL --exit-code 1 $REPO/$service:$TAG
+
+            trivy image --severity HIGH,CRITICAL $REPO/$service:$TAG || trivy_failed=1
           done
+
+          exit $trivy_failed
