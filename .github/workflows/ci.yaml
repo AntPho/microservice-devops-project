@@ -111,7 +111,10 @@ jobs:
           echo "TAG is: $TAG"
 
           # Installer Trivy
-          wget -q https://github.com/aquasecurity/trivy/releases/download/v0.50.0/trivy_0.50.0_Linux-64bit.deb
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.50.0 || {
+            echo "❌ Failed to install Trivy"
+            exit 1
+          }
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.50.0
           
           echo "1"
