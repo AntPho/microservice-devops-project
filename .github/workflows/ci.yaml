@@ -106,39 +106,43 @@ jobs:
       # 🔒 Scan de sécurité avec Trivy
       - name: Scan images with Trivy
         run: |
-          TAG=${{ steps.vars.outputs.TAG }}
-          REPO=${{ steps.vars.outputs.REPO }}
+          set -e   # exit on error (we'll handle critical steps)
+
+          TAG="sha-961691e15227da14c81b59a32d794a4b92af513c"
+          REPO="ghcr.io/antpho/microservice-devops-project"
+
           echo "TAG is: $TAG"
 
-          # Installer Trivy
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.50.0 || {
-            echo "❌ Failed to install Trivy"
-            exit 1
-          }
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.50.0
-          
-          echo "1"
+          # Install Trivy (direct binary download)
+          TRIVY_VERSION="v0.50.0"
+          wget -q "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tar -xzf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          sudo mv trivy /usr/local/bin/
+          trivy --version   # confirm installation
+
+          # Optional: Log in to GHCR if images are private
+          # echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
           services=(
             frontend
             checkoutservice
             productcatalogservice
           )
-          
+
           trivy_failed=0
 
-          set -x   # print each command as it's executed
-          
-          echo "2"
+          set -x   # enable command tracing for debugging
+
           for service in "${services[@]}"; do
             echo "🔍 Scanning $service..."
             echo "⬇️ Pulling image..."
             docker pull "$REPO/$service:$TAG" || {
-              echo "Pull failed with exit $?";
-              trivy_failed=1;
+              echo "Pull failed with exit $?"
+              trivy_failed=1
             }
             trivy image --severity HIGH,CRITICAL "$REPO/$service:$TAG" || {
-              echo "Trivy failed with exit $?";
-              trivy_failed=1;
+              echo "Trivy failed with exit $?"
+              trivy_failed=1
             }
           done
 
