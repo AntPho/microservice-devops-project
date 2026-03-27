@@ -115,7 +115,9 @@ jobs:
 
           # Install Trivy (direct binary download)
           TRIVY_VERSION="0.50.0"
+          echo "1"
           wget -q "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "2"
           tar -xzf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
           sudo mv trivy /usr/local/bin/
           trivy --version   # confirm installation
@@ -128,7 +130,7 @@ jobs:
             checkoutservice
             productcatalogservice
           )
-
+          echo "3"
           trivy_failed=0
 
           set -x   # enable command tracing for debugging
