@@ -65,7 +65,7 @@ jobs:
             shippingservice
           )
 
-          go_services="frontend checkoutservice productcatalogservice"
+          go_services=" " 
 
           find_dockerfile_path() {
             local service_dir=$1
@@ -107,8 +107,12 @@ jobs:
       - name: Scan images with Trivy
         run: |
           set -e   # exit on error (we'll handle critical steps)
+          
+          TAG=${{ steps.vars.outputs.TAG }}
+          REPO=${{ steps.vars.outputs.REPO }}
 
-          REPO="ghcr.io/antpho/microservice-devops-project"
+          echo "Tag is $TAG"
+          eccho "Repo is $REPO"
 
           sudo apt-get update
           sudo apt-get install -y wget apt-transport-https gnupg lsb-release
