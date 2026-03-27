@@ -112,8 +112,9 @@ jobs:
 
           # Installer Trivy
           wget -q https://github.com/aquasecurity/trivy/releases/download/v0.50.0/trivy_0.50.0_Linux-64bit.deb
-          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.50.0
           
+          echo "1"
           services=(
             frontend
             checkoutservice
@@ -123,7 +124,8 @@ jobs:
           trivy_failed=0
 
           set -x   # print each command as it's executed
-
+          
+          echo "2"
           for service in "${services[@]}"; do
             echo "🔍 Scanning $service..."
             echo "⬇️ Pulling image..."
