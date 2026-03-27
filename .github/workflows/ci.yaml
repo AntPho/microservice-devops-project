@@ -112,7 +112,7 @@ jobs:
           REPO=${{ steps.vars.outputs.REPO }}
 
           echo "Tag is $TAG"
-          eccho "Repo is $REPO"
+          echo "Repo is $REPO"
 
           sudo apt-get update
           sudo apt-get install -y wget apt-transport-https gnupg lsb-release
