@@ -112,7 +112,7 @@
 	  "id": "PATATE1",
 	  "name": "Grosse Patate",
 	  "description": "Une simple patate.",
-	  "picture": "/static/img/products/Patete.jpg",
+	  "picture": "/static/img/products/Patate.jpg",
 	  "priceUsd": {
 	  	"currencyCode": "USD",
 	  	"units": 19,
