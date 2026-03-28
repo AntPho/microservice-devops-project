@@ -107,6 +107,18 @@
                 "nanos": 990000000
             },
             "categories": ["kitchen"]
-        }
+        },
+	{
+	  "id": "PATATE1",
+	  "name": "Grosse Patate",
+	  "description": "Une simple patate.",
+	  "picture": "/static/img/products/Patete.jpg",
+	  "priceUsd": {
+	  	"currencyCode": "USD",
+	  	"units": 19,
+	  	"nanos": 990000000
+	  },
+	  	"categories": ["Patate"]
+	}
     ]
 }
