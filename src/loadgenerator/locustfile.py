@@ -96,7 +96,7 @@ class UserBehavior(TaskSet):
         browseProduct: 10,
         addToCart: 2,
         viewCart: 3,
-        checkout: 1
+        checkout: 1,
         postReview: 5}
 
 class WebsiteUser(FastHttpUser):
