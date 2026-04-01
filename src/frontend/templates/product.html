@@ -1,60 +1,58 @@
 <!--
  Copyright 2020 Google LLC
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
 -->
 
 {{ define "product" }}
 {{ template "header" . }}
+
 <div {{ with $.platform_css }} class="{{.}}" {{ end }}>
   <span class="platform-flag">
-    {{$.platform_name}}
+    {{ $.platform_name }}
   </span>
 </div>
 
 <main role="main">
   <div class="h-product container">
     <div class="row">
+      
+      <!-- Image produit -->
       <div class="col-md-6">
-        <img class="product-image" alt="" src="{{ $.baseUrl }}{{$.product.Item.Picture}}" />
+        <img class="product-image" alt="" src="{{ $.baseUrl }}{{ $.product.Item.Picture }}" />
       </div>
+
+      <!-- Infos produit -->
       <div class="product-info col-md-5">
         <div class="product-wrapper">
-
           <h2>{{ $.product.Item.Name }}</h2>
           <p class="product-price">{{ renderMoney $.product.Price }}</p>
           <p>{{ $.product.Item.Description }}</p>
 
+          <!-- Reviews live -->
+          <div id="review-ticker" style="
+              margin:20px 0;
+              padding:12px;
+              border:1px solid #ddd;
+              border-radius:8px;
+              background:#fafafa;
+              font-size:14px;
+              min-height:50px;
+          ">
+            ⭐ Chargement des reviews...
+          </div>
+
           {{ if $.packagingInfo }}
           <div class="product-packaging">
             <h3>Packaging</h3>
-            <span>
-              Weight: {{ if $.packagingInfo.Weight }}{{ $.packagingInfo.Weight }}lb{{ else }}n/a{{ end }}
-            </span>
-            <span>
-              Width: {{ if $.packagingInfo.Width }}{{ $.packagingInfo.Width }}cm{{ else }}n/a{{ end }}
-            </span>
-            <span>
-              Height: {{ if $.packagingInfo.Height }}{{ $.packagingInfo.Height }}cm{{ else }}n/a{{ end }}
-            </span>
-            <span>
-              Depth: {{ if $.packagingInfo.Depth }}{{ $.packagingInfo.Depth }}cm{{ else }}n/a{{ end }}
-            </span>
+            <span>Weight: {{ if $.packagingInfo.Weight }}{{ $.packagingInfo.Weight }}lb{{ else }}n/a{{ end }}</span>
+            <span>Width: {{ if $.packagingInfo.Width }}{{ $.packagingInfo.Width }}cm{{ else }}n/a{{ end }}</span>
+            <span>Height: {{ if $.packagingInfo.Height }}{{ $.packagingInfo.Height }}cm{{ else }}n/a{{ end }}</span>
+            <span>Depth: {{ if $.packagingInfo.Depth }}{{ $.packagingInfo.Depth }}cm{{ else }}n/a{{ end }}</span>
           </div>
           {{ end }}
 
+          <!-- Add to cart -->
           <form method="POST" action="{{ $.baseUrl }}/cart">
-            <input type="hidden" name="product_id" value="{{$.product.Item.Id}}" />
+            <input type="hidden" name="product_id" value="{{ $.product.Item.Id }}" />
             <div class="product-quantity-dropdown">
               <select name="quantity" id="quantity">
                 <option>1</option>
@@ -72,15 +70,47 @@
       </div>
     </div>
   </div>
+
+  <!-- Recommandations -->
   <div>
-    {{ if $.recommendations}}
+    {{ if $.recommendations }}
       {{ template "recommendations" $ }}
     {{ end }}
   </div>
-  <div class="ad">
-   {{ if $.ad }}{{ template "text_ad" $ }}{{ end }}
-  </div>
 
+  <!-- Ads -->
+  <div class="ad">
+    {{ if $.ad }}{{ template "text_ad" $ }}{{ end }}
+  </div>
 </main>
+
+<script>
+const productId = "{{ $.product.Item.Id }}";
+
+async function loadReviews() {
+    try {
+        const res = await fetch(`/reviews/${productId}`);
+        const data = await res.json();
+
+        const ticker = document.getElementById("review-ticker");
+
+        if (!ticker) return;
+
+        if (data.reviews && data.reviews.length > 0) {
+            ticker.innerHTML = data.reviews
+                .map(r => `⭐ ${r}`)
+                .join(" • ");
+        } else {
+            ticker.innerHTML = "⭐ Aucune review pour le moment";
+        }
+    } catch (err) {
+        console.error("Erreur reviews:", err);
+    }
+}
+
+loadReviews();
+setInterval(loadReviews, 3000);
+</script>
+
 {{ template "footer" . }}
 {{ end }}

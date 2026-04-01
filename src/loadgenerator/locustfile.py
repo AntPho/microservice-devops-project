@@ -70,6 +70,17 @@ def checkout(l):
         'credit_card_expiration_year': random.randint(current_year, current_year + 70),
         'credit_card_cvv': f"{random.randint(100, 999)}",
     })
+
+def postReview(l):
+    product = random.choice(products)
+    review = random.choice([
+	"Excellent produit 🔥",
+	"Très bonne qualité",
+	"Livraison rapide",
+	"Je recommande",
+	"Bon rapport qualité/prix"
+    ])
+    l.client.post(f"/reviews/{product}", json={"message": review})
     
 def logout(l):
     l.client.get('/logout')  
@@ -85,7 +96,8 @@ class UserBehavior(TaskSet):
         browseProduct: 10,
         addToCart: 2,
         viewCart: 3,
-        checkout: 1}
+        checkout: 1
+        postReview: 5}
 
 class WebsiteUser(FastHttpUser):
     tasks = [UserBehavior]

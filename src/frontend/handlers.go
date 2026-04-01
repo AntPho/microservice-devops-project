@@ -56,6 +56,26 @@ var (
 
 var validEnvs = []string{"local", "gcp", "azure", "aws", "onprem", "alibaba"}
 
+func reviewsHandler(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    productID := vars["id"]
+
+    if productID == "" {
+        http.Error(w, "missing product id", http.StatusBadRequest)
+        return
+    }
+
+    resp, err := http.Get("http://reviewservice/reviews/" + productID)
+    if err != nil {
+        http.Error(w, "review service unavailable", http.StatusInternalServerError)
+        return
+    }
+    defer resp.Body.Close()
+
+    w.Header().Set("Content-Type", "application/json")
+    io.Copy(w, resp.Body)
+}
+
 func (fe *frontendServer) homeHandler(w http.ResponseWriter, r *http.Request) {
 	log := r.Context().Value(ctxKeyLog{}).(logrus.FieldLogger)
 	log.WithField("currency", currentCurrency(r)).Info("home")
