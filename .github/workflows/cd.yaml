@@ -40,6 +40,7 @@ jobs:
             "productcatalogservice"
             "recommendationservice"
             "shippingservice"
+            "reviewservice"
           )
 
           for deployment in "${deployments[@]}"; do

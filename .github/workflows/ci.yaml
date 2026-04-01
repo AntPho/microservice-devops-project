@@ -63,6 +63,7 @@ jobs:
             productcatalogservice
             recommendationservice
             shippingservice
+            reviewservice
           )
 
           go_services=" " 
