@@ -65,15 +65,26 @@ func reviewsHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    resp, err := http.Get("http://reviewservice/reviews/" + productID)
+    url := "http://reviewservice:8080/reviews/" + productID
+
+    resp, err := http.Get(url)
     if err != nil {
         http.Error(w, "review service unavailable", http.StatusInternalServerError)
         return
     }
     defer resp.Body.Close()
 
+    if resp.StatusCode != http.StatusOK {
+        http.Error(w, "review service error", http.StatusInternalServerError)
+        return
+    }
+
     w.Header().Set("Content-Type", "application/json")
-    io.Copy(w, resp.Body)
+    _, err = io.Copy(w, resp.Body)
+    if err != nil {
+        http.Error(w, "failed to copy response", http.StatusInternalServerError)
+        return
+    }
 }
 
 func (fe *frontendServer) homeHandler(w http.ResponseWriter, r *http.Request) {
