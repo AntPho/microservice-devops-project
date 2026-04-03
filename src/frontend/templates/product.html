@@ -88,10 +88,6 @@
 const productId = "{{ $.product.Item.Id }}";
 const baseUrl = "{{ $.baseUrl }}";
 
-<script>
-const productId = "{{ $.product.Item.Id }}";
-const baseUrl = "{{ $.baseUrl }}";
-
 async function loadReviews() {
     try {
         const res = await fetch(`${baseUrl}/reviews/${productId}`);
@@ -102,8 +98,6 @@ async function loadReviews() {
 
         if (data.reviews && data.reviews.length > 0) {
             ticker.innerHTML = data.reviews
-                .slice(-5)
-                .reverse()
                 .map(r => `⭐ ${r}`)
                 .join(" • ");
         } else {
@@ -114,8 +108,10 @@ async function loadReviews() {
     }
 }
 
-loadReviews();
-setInterval(loadReviews, 3000);
+window.addEventListener("DOMContentLoaded", () => {
+    loadReviews();
+    setInterval(loadReviews, 3000);
+});
 </script>
 
 {{ template "footer" . }}
