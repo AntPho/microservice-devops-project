@@ -86,18 +86,24 @@
 
 <script>
 const productId = "{{ $.product.Item.Id }}";
+const baseUrl = "{{ $.baseUrl }}";
+
+<script>
+const productId = "{{ $.product.Item.Id }}";
+const baseUrl = "{{ $.baseUrl }}";
 
 async function loadReviews() {
     try {
-        const res = await fetch(`/reviews/${productId}`);
+        const res = await fetch(`${baseUrl}/reviews/${productId}`);
         const data = await res.json();
 
         const ticker = document.getElementById("review-ticker");
-
         if (!ticker) return;
 
         if (data.reviews && data.reviews.length > 0) {
             ticker.innerHTML = data.reviews
+                .slice(-5)
+                .reverse()
                 .map(r => `⭐ ${r}`)
                 .join(" • ");
         } else {
