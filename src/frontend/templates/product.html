@@ -14,13 +14,11 @@
 <main role="main">
   <div class="h-product container">
     <div class="row">
-      
-      <!-- Image produit -->
+
       <div class="col-md-6">
         <img class="product-image" alt="" src="{{ $.baseUrl }}{{ $.product.Item.Picture }}" />
       </div>
 
-      <!-- Infos produit -->
       <div class="product-info col-md-5">
         <div class="product-wrapper">
           <h2>{{ $.product.Item.Name }}</h2>
@@ -40,17 +38,6 @@
             ⭐ Chargement des reviews...
           </div>
 
-          {{ if $.packagingInfo }}
-          <div class="product-packaging">
-            <h3>Packaging</h3>
-            <span>Weight: {{ if $.packagingInfo.Weight }}{{ $.packagingInfo.Weight }}lb{{ else }}n/a{{ end }}</span>
-            <span>Width: {{ if $.packagingInfo.Width }}{{ $.packagingInfo.Width }}cm{{ else }}n/a{{ end }}</span>
-            <span>Height: {{ if $.packagingInfo.Height }}{{ $.packagingInfo.Height }}cm{{ else }}n/a{{ end }}</span>
-            <span>Depth: {{ if $.packagingInfo.Depth }}{{ $.packagingInfo.Depth }}cm{{ else }}n/a{{ end }}</span>
-          </div>
-          {{ end }}
-
-          <!-- Add to cart -->
           <form method="POST" action="{{ $.baseUrl }}/cart">
             <input type="hidden" name="product_id" value="{{ $.product.Item.Id }}" />
             <div class="product-quantity-dropdown">
@@ -71,44 +58,47 @@
     </div>
   </div>
 
-  <!-- Recommandations -->
   <div>
     {{ if $.recommendations }}
       {{ template "recommendations" $ }}
     {{ end }}
   </div>
 
-  <!-- Ads -->
   <div class="ad">
     {{ if $.ad }}{{ template "text_ad" $ }}{{ end }}
   </div>
 </main>
 
 <script>
-const productId = "{{ $.product.Item.Id }}";
-const baseUrl = "{{ $.baseUrl }}";
+window.addEventListener("load", function () {
+    const productId = "{{ $.product.Item.Id }}";
+    const ticker = document.getElementById("review-ticker");
 
-async function loadReviews() {
-    try {
-        const res = await fetch(`${baseUrl}/reviews/${productId}`);
-        const data = await res.json();
+    async function loadReviews() {
+        try {
+            const res = await fetch("/reviews/" + productId);
+            const data = await res.json();
 
-        const ticker = document.getElementById("review-ticker");
-        if (!ticker) return;
+            console.log("reviews data =", data);
 
-        if (data.reviews && data.reviews.length > 0) {
-            ticker.innerHTML = data.reviews
-                .map(r => `⭐ ${r}`)
-                .join(" • ");
-        } else {
-            ticker.innerHTML = "⭐ Aucune review pour le moment";
+            if (!ticker) {
+                console.error("review-ticker introuvable");
+                return;
+            }
+
+            if (data.reviews && data.reviews.length > 0) {
+                ticker.innerHTML = data.reviews
+                    .map(r => `⭐ ${r}`)
+                    .join("<br>");
+            } else {
+                ticker.innerHTML = "⭐ Aucune review";
+            }
+        } catch (err) {
+            console.error("Erreur reviews:", err);
+            ticker.innerHTML = "❌ Impossible de charger les reviews";
         }
-    } catch (err) {
-        console.error("Erreur reviews:", err);
     }
-}
 
-window.addEventListener("DOMContentLoaded", () => {
     loadReviews();
     setInterval(loadReviews, 3000);
 });
