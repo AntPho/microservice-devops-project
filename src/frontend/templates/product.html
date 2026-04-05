@@ -70,38 +70,27 @@
 </main>
 
 <script>
-window.addEventListener("load", function () {
-    const productId = "{{ $.product.Item.Id }}";
-    const ticker = document.getElementById("review-ticker");
+const ticker = document.getElementById("review-ticker");
+const productId = "{{ $.product.Item.Id }}";
 
-    async function loadReviews() {
-        try {
-            const res = await fetch("/reviews/" + productId);
-            const data = await res.json();
+async function loadReviews() {
+    try {
+        const res = await fetch("/reviews/" + productId);
+        const data = await res.json();
 
-            console.log("reviews data =", data);
+        console.log("AUTO reviews =", data);
 
-            if (!ticker) {
-                console.error("review-ticker introuvable");
-                return;
-            }
-
-            if (data.reviews && data.reviews.length > 0) {
-                ticker.innerHTML = data.reviews
-                    .map(r => `⭐ ${r}`)
-                    .join("<br>");
-            } else {
-                ticker.innerHTML = "⭐ Aucune review";
-            }
-        } catch (err) {
-            console.error("Erreur reviews:", err);
-            ticker.innerHTML = "❌ Impossible de charger les reviews";
-        }
+        ticker.innerHTML = data.reviews?.length
+            ? data.reviews.map(r => `⭐ ${r}`).join("<br>")
+            : "⭐ Aucune review";
+    } catch (err) {
+        console.error("Erreur auto reviews:", err);
+        ticker.innerHTML = "❌ erreur reviews";
     }
+}
 
-    loadReviews();
-    setInterval(loadReviews, 3000);
-});
+loadReviews();
+setInterval(loadReviews, 3000);
 </script>
 
 {{ template "footer" . }}
