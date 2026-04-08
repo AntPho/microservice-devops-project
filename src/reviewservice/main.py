@@ -9,6 +9,7 @@ app = FastAPI(title="reviewservice")
 
 reviews = defaultdict(list)
 lock = Lock()
+MAX_REVIEWS = 4
 
 sample_reviews = [
     "Excellent produit 🔥",
@@ -37,10 +38,13 @@ def add_review(product_id: str, review: Review):
             "timestamp": int(time.time())
         })
 
-        # garder max 50 reviews
-        reviews[product_id] = reviews[product_id][-50:]
+        # garder uniquement les 4 dernières
+        reviews[product_id] = reviews[product_id][-MAX_REVIEWS:]
 
-    return {"status": "added"}
+    return {
+        "status": "added",
+        "reviews": [r["message"] for r in reviews[product_id]]
+    }
 
 
 @app.get("/reviews/{product_id}")
@@ -48,16 +52,15 @@ def get_reviews(product_id: str):
     with lock:
         existing = reviews[product_id]
 
-        # seed auto si vide (super pour démo)
         if not existing:
             existing.extend([
                 {
                     "message": random.choice(sample_reviews),
                     "timestamp": int(time.time())
                 }
-                for _ in range(random.randint(3, 5))
+                for _ in range(MAX_REVIEWS)
             ])
 
         return {
-            "reviews": [r["message"] for r in existing[-10:]]
+            "reviews": [r["message"] for r in existing]
         }
