@@ -58,31 +58,22 @@ var validEnvs = []string{"local", "gcp", "azure", "aws", "onprem", "alibaba"}
 
 func reviewsHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
-    productID := vars["id"]
+    id := vars["id"]
 
-    if productID == "" {
-        http.Error(w, "missing product id", http.StatusBadRequest)
+    url := fmt.Sprintf("http://reviewservice:8080/reviews/%s", id)
+
+    if r.Method == http.MethodGet {
+        resp, _ := http.Get(url)
+        defer resp.Body.Close()
+        io.Copy(w, resp.Body)
         return
     }
 
-    url := "http://reviewservice:8080/reviews/" + productID
-
-    resp, err := http.Get(url)
-    if err != nil {
-        http.Error(w, "review service unavailable", http.StatusInternalServerError)
-        return
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != http.StatusOK {
-        http.Error(w, "review service error", http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    _, err = io.Copy(w, resp.Body)
-    if err != nil {
-        http.Error(w, "failed to copy response", http.StatusInternalServerError)
+    if r.Method == http.MethodPost {
+        body, _ := io.ReadAll(r.Body)
+        resp, _ := http.Post(url, "application/json", bytes.NewBuffer(body))
+        defer resp.Body.Close()
+        io.Copy(w, resp.Body)
         return
     }
 }
