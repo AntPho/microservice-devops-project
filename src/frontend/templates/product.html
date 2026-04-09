@@ -24,6 +24,9 @@
           <h2>{{ $.product.Item.Name }}</h2>
           <p class="product-price">{{ renderMoney $.product.Price }}</p>
           <p>{{ $.product.Item.Description }}</p>
+          <div id="review-summary" style="margin-bottom:10px;font-weight:bold;">
+	    ⭐ Note moyenne en chargement...
+	  </div>
 
           <!-- Reviews live -->
           <div id="review-ticker" style="
@@ -71,6 +74,7 @@
 
 <script>
 const ticker = document.getElementById("review-ticker");
+const summary = document.getElementById("review-summary");
 const productId = "{{ $.product.Item.Id }}";
 
 async function loadReviews() {
@@ -78,13 +82,21 @@ async function loadReviews() {
         const res = await fetch("/reviews/" + productId);
         const data = await res.json();
 
-        console.log("AUTO reviews =", data);
+        if (summary) {
+            summary.innerHTML =
+                `⭐ ${data.average}/5 (${data.count} reviews)`;
+        }
 
-        ticker.innerHTML = data.reviews?.length
-            ? data.reviews.map(r => `⭐ ${r}`).join("<br>")
-            : "⭐ Aucune review";
+        if (ticker) {
+            ticker.innerHTML = data.reviews?.length
+                ? data.reviews.map(r =>
+                    `⭐ ${r.message} ${r.rating}/5 - <b>${r.author}</b>`
+                  ).join("<br>")
+                : "⭐ Aucune review";
+        }
+
     } catch (err) {
-        console.error("Erreur auto reviews:", err);
+        console.error("Erreur reviews:", err);
         ticker.innerHTML = "❌ erreur reviews";
     }
 }
