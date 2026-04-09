@@ -7,9 +7,14 @@ import time
 
 app = FastAPI(title="reviewservice")
 
+# seulement les 4 derniers commentaires
 reviews = defaultdict(list)
+
+# stats globales infinies
+rating_stats = defaultdict(lambda: {"sum": 0, "count": 0})
+
 lock = Lock()
-MAX_REVIEWS = 4
+DISPLAY_LIMIT = 4
 
 sample_reviews = [
     "Excellent produit",
@@ -37,28 +42,41 @@ def random_rating():
     return random.randint(3, 5)
 
 
+def build_response(product_id):
+    current = reviews[product_id]
+    stats = rating_stats[product_id]
+
+    avg = round(stats["sum"] / stats["count"], 1) if stats["count"] > 0 else 0
+
+    return {
+        "reviews": current,
+        "average": avg,
+        "count": stats["count"]
+    }
+
+
 @app.post("/reviews/{product_id}")
 def add_review(product_id: str, review: Review):
     with lock:
-        current = reviews[product_id]
+        rating = random_rating()
 
+        # update stats infinies
+        rating_stats[product_id]["sum"] += rating
+        rating_stats[product_id]["count"] += 1
+
+        # seulement les 4 derniers commentaires
+        current = reviews[product_id]
         current.append({
             "message": review.message,
-            "rating": random_rating(),
+            "rating": rating,
             "author": random_author(),
             "timestamp": int(time.time())
         })
 
-        if len(current) > MAX_REVIEWS:
+        if len(current) > DISPLAY_LIMIT:
             current.pop(0)
 
-        avg = round(sum(r["rating"] for r in current) / len(current), 1)
-
-        return {
-            "reviews": current,
-            "average": avg,
-            "count": len(current)
-        }
+        return build_response(product_id)
 
 
 @app.get("/reviews/{product_id}")
@@ -66,19 +84,19 @@ def get_reviews(product_id: str):
     with lock:
         current = reviews[product_id]
 
-        if not current:
+        # seed initial uniquement si aucune stat
+        if rating_stats[product_id]["count"] == 0:
             for _ in range(4):
+                rating = random_rating()
+
+                rating_stats[product_id]["sum"] += rating
+                rating_stats[product_id]["count"] += 1
+
                 current.append({
                     "message": random.choice(sample_reviews),
-                    "rating": random_rating(),
+                    "rating": rating,
                     "author": random_author(),
                     "timestamp": int(time.time())
                 })
 
-        avg = round(sum(r["rating"] for r in current) / len(current), 1)
-
-        return {
-            "reviews": current,
-            "average": avg,
-            "count": len(current)
-        }
+        return build_response(product_id)
