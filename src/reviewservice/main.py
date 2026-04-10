@@ -4,6 +4,8 @@ from collections import defaultdict
 from threading import Lock
 import random
 import time
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
+from fastapi.responses import Response
 
 app = FastAPI(title="reviewservice")
 
@@ -29,6 +31,28 @@ sample_reviews = [
 first_names = ["Lucas", "Emma", "Nathan", "Lina", "Hugo", "Jade"]
 last_names = ["Martin", "Bernard", "Petit", "Robert", "Richard", "Durand"]
 
+REVIEW_POSTS_TOTAL = Counter(
+    "review_posts_total",
+    "Total reviews submitted",
+    ["product_id"]
+)
+
+REVIEW_AVERAGE = Gauge(
+    "review_average_rating",
+    "Average rating per product",
+    ["product_id"]
+)
+
+REVIEW_COUNT = Gauge(
+    "review_count",
+    "Total number of ratings per product",
+    ["product_id"]
+)
+
+REQUEST_LATENCY = Histogram(
+    "review_request_latency_seconds",
+    "Latency of review API"
+)
 
 class Review(BaseModel):
     message: str
@@ -57,6 +81,7 @@ def build_response(product_id):
 
 @app.post("/reviews/{product_id}")
 def add_review(product_id: str, review: Review):
+    start = time.time()
     with lock:
         rating = random_rating()
 
@@ -76,6 +101,15 @@ def add_review(product_id: str, review: Review):
         if len(current) > DISPLAY_LIMIT:
             current.pop(0)
 
+	REVIEW_POSTS_TOTAL.labels(product_id=product_id).inc()
+
+	avg = rating_stats[product_id]["sum"] / rating_stats[product_id]["count"]
+	REVIEW_AVERAGE.labels(product_id=product_id).set(avg)
+	REVIEW_COUNT.labels(product_id=product_id).set(
+	    rating_stats[product_id]["count"]
+	)
+
+	REQUEST_LATENCY.observe(time.time() - start)
         return build_response(product_id)
 
 
@@ -100,3 +134,7 @@ def get_reviews(product_id: str):
                 })
 
         return build_response(product_id)
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type="text/plain")
