@@ -101,15 +101,16 @@ def add_review(product_id: str, review: Review):
         if len(current) > DISPLAY_LIMIT:
             current.pop(0)
 
-	REVIEW_POSTS_TOTAL.labels(product_id=product_id).inc()
+        REVIEW_POSTS_TOTAL.labels(product_id=product_id).inc()
 
-	avg = rating_stats[product_id]["sum"] / rating_stats[product_id]["count"]
-	REVIEW_AVERAGE.labels(product_id=product_id).set(avg)
-	REVIEW_COUNT.labels(product_id=product_id).set(
-	    rating_stats[product_id]["count"]
-	)
+        avg = rating_stats[product_id]["sum"] / rating_stats[product_id]["count"]
+        REVIEW_AVERAGE.labels(product_id=product_id).set(avg)
+        REVIEW_COUNT.labels(product_id=product_id).set(
+            rating_stats[product_id]["count"]
+        )
 
-	REQUEST_LATENCY.observe(time.time() - start)
+        REQUEST_LATENCY.observe(time.time() - start)
+        
         return build_response(product_id)
 
 
