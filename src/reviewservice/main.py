@@ -34,7 +34,7 @@ last_names = ["Martin", "Bernard", "Petit", "Robert", "Richard", "Durand"]
 REVIEW_POSTS_TOTAL = Counter(
     "review_posts_total",
     "Total reviews submitted",
-    ["product_id"]
+    ["product_id","product_name"]
 )
 
 REVIEW_AVERAGE = Gauge(
@@ -53,6 +53,19 @@ REQUEST_LATENCY = Histogram(
     "review_request_latency_seconds",
     "Latency of review API"
 )
+
+PRODUCT_NAMES = {
+    "OLJCESPC7Z": "Sunglasses",
+    "66VCHSJNUP": "Tank Top",
+    "1YMWWN1N4O": "Watch",
+    "2ZYFJ3GM2N": "Hairdryer",
+    "L9ECAV7KIM": "Loafers",
+    "0PUK6V6EV0": "Candle Holder",
+    "LS4PSXUNUM": "Salt & Pepper Shakers",
+    "9SIQT8TOJO": "Bamboo Glass Jar",
+    "6E92ZMYYFZ": "Mug",
+    "PATATE1": "Grosse Patate",
+}
 
 class Review(BaseModel):
     message: str
@@ -101,7 +114,12 @@ def add_review(product_id: str, review: Review):
         if len(current) > DISPLAY_LIMIT:
             current.pop(0)
 
-        REVIEW_POSTS_TOTAL.labels(product_id=product_id).inc()
+        product_name = PRODUCT_NAMES.get(product_id, product_id)
+
+        REVIEW_POSTS_TOTAL.labels(
+          product_id=product_id,
+          product_name=product_name
+        ).inc()
 
         avg = rating_stats[product_id]["sum"] / rating_stats[product_id]["count"]
         REVIEW_AVERAGE.labels(product_id=product_id).set(avg)
