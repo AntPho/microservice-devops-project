@@ -1,38 +1,64 @@
 {
-  "title": "Review Service Dashboard",
-  "timezone": "browser",
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "5s",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 0,
   "panels": [
     {
+      "id": 1,
       "type": "stat",
       "title": "Total Reviews",
-      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "targets": [
-        {"expr": "sum(review_posts_total)", "refId": "A"}
+        {
+          "expr": "sum(review_posts_total)",
+          "refId": "A"
+        }
       ]
     },
     {
+      "id": 2,
       "type": "stat",
       "title": "Average Rating",
-      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "targets": [
-        {"expr": "avg(review_average_rating)", "refId": "A"}
+        {
+          "expr": "avg(review_average_rating)",
+          "refId": "A"
+        }
       ]
     },
     {
+      "id": 3,
       "type": "timeseries",
       "title": "Reviews per Minute",
-      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6},
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 4 },
       "targets": [
-        {"expr": "sum(rate(review_posts_total[1m])) * 60", "refId": "A"}
+        {
+          "expr": "sum(rate(review_posts_total[1m])) * 60",
+          "refId": "A"
+        }
       ]
     },
     {
+      "id": 4,
       "type": "timeseries",
-      "title": "API Latency (p95)",
-      "gridPos": {"x": 0, "y": 10, "w": 12, "h": 6},
+      "title": "API Latency p95",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 4 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(review_request_latency_seconds_bucket[5m])) by (le))",
@@ -41,16 +67,54 @@
       ]
     },
     {
+      "id": 5,
       "type": "bargauge",
       "title": "Top Products by Review Count",
-      "gridPos": {"x": 0, "y": 16, "w": 12, "h": 6},
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 10 },
       "targets": [
         {
           "expr": "topk(5, review_count)",
-          "legendFormat": "{{product_id}}",
+          "legendFormat": "{{product_name}}",
           "refId": "A"
         }
-      ]
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
+      }
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Top Products by Score",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        {
+          "expr": "topk(5, review_average_rating)",
+          "legendFormat": "{{product_name}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true
+      }
     }
-  ]
+  ],
+  "refresh": "5s",
+  "schemaVersion": 42,
+  "tags": ["reviewservice", "prometheus"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Review Service Dashboard",
+  "uid": "reviewservice-dashboard",
+  "version": 1
 }
