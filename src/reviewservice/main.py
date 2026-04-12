@@ -40,13 +40,13 @@ REVIEW_POSTS_TOTAL = Counter(
 REVIEW_AVERAGE = Gauge(
     "review_average_rating",
     "Average rating per product",
-    ["product_id"]
+    ["product_id","product_name"]
 )
 
 REVIEW_COUNT = Gauge(
     "review_count",
     "Total number of ratings per product",
-    ["product_id"]
+    ["product_id","product_name"]
 )
 
 REQUEST_LATENCY = Histogram(
