@@ -122,10 +122,16 @@ def add_review(product_id: str, review: Review):
         ).inc()
 
         avg = rating_stats[product_id]["sum"] / rating_stats[product_id]["count"]
-        REVIEW_AVERAGE.labels(product_id=product_id).set(avg)
-        REVIEW_COUNT.labels(product_id=product_id).set(
-            rating_stats[product_id]["count"]
-        )
+
+        REVIEW_AVERAGE.labels(
+            product_id=product_id,
+            product_name=product_name
+        ).set(avg)
+
+        REVIEW_COUNT.labels(
+            product_id=product_id,
+            product_name=product_name
+        ).set(rating_stats[product_id]["count"])
 
         REQUEST_LATENCY.observe(time.time() - start)
         
