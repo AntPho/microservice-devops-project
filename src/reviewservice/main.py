@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from collections import defaultdict
 from threading import Lock
-import json
 import random
 import time
+import json
+import redis
+
 from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from fastapi.responses import Response
-import redis
 
 r = redis.Redis(host="redis", port=6379, decode_responses=True)
 
@@ -29,29 +29,6 @@ sample_reviews = [
 first_names = ["Lucas", "Emma", "Nathan", "Lina", "Hugo", "Jade"]
 last_names = ["Martin", "Bernard", "Petit", "Robert", "Richard", "Durand"]
 
-REVIEW_POSTS_TOTAL = Counter(
-    "review_posts_total",
-    "Total reviews submitted",
-    ["product_id","product_name"]
-)
-
-REVIEW_AVERAGE = Gauge(
-    "review_average_rating",
-    "Average rating per product",
-    ["product_id","product_name"]
-)
-
-REVIEW_COUNT = Gauge(
-    "review_count",
-    "Total number of ratings per product",
-    ["product_id","product_name"]
-)
-
-REQUEST_LATENCY = Histogram(
-    "review_request_latency_seconds",
-    "Latency of review API"
-)
-
 PRODUCT_NAMES = {
     "OLJCESPC7Z": "Sunglasses",
     "66VCHSJNUP": "Tank Top",
@@ -65,6 +42,30 @@ PRODUCT_NAMES = {
     "PATATE1": "Grosse Patate",
 }
 
+REVIEW_POSTS_TOTAL = Counter(
+    "review_posts_total",
+    "Total reviews submitted",
+    ["product_id", "product_name"]
+)
+
+REVIEW_AVERAGE = Gauge(
+    "review_average_rating",
+    "Average rating per product",
+    ["product_id", "product_name"]
+)
+
+REVIEW_COUNT = Gauge(
+    "review_count",
+    "Total number of ratings per product",
+    ["product_id", "product_name"]
+)
+
+REQUEST_LATENCY = Histogram(
+    "review_request_latency_seconds",
+    "Latency of review API"
+)
+
+
 class Review(BaseModel):
     message: str
 
@@ -76,27 +77,52 @@ def random_author():
 def random_rating():
     return random.randint(3, 5)
 
+
+def sync_metrics(product_id: str):
+    product_name = PRODUCT_NAMES.get(product_id, product_id)
+
+    stats = r.hgetall(f"rating:{product_id}")
+    count = int(stats.get("count", 0))
+    total = int(stats.get("sum", 0))
+
+    if count == 0:
+        return
+
+    avg = total / count
+
+    REVIEW_AVERAGE.labels(
+        product_id=product_id,
+        product_name=product_name
+    ).set(avg)
+
+    REVIEW_COUNT.labels(
+        product_id=product_id,
+        product_name=product_name
+    ).set(count)
+
+
 def build_response(product_id):
-    review_key = f"reviews:{product_id}"
-    rating_key = f"rating:{product_id}"
+    stats = r.hgetall(f"rating:{product_id}")
+    review_list = r.lrange(f"reviews:{product_id}", 0, DISPLAY_LIMIT - 1)
 
-    current = [
-        json.loads(x)
-        for x in r.lrange(review_key, 0, 3)
-    ]
+    count = int(stats.get("count", 0))
+    total = int(stats.get("sum", 0))
+    avg = round(total / count, 1) if count > 0 else 0
 
-    stats = r.hgetall(rating_key)
-
-    total_sum = int(stats.get("sum", 0))
-    total_count = int(stats.get("count", 0))
-
-    avg = round(total_sum / total_count, 1) if total_count > 0 else 0
+    parsed_reviews = [json.loads(x) for x in review_list]
 
     return {
-        "reviews": current,
+        "reviews": parsed_reviews,
         "average": avg,
-        "count": total_count
+        "count": count
     }
+
+
+@app.on_event("startup")
+def load_metrics_from_redis():
+    for key in r.scan_iter("rating:*"):
+        product_id = key.split(":")[1]
+        sync_metrics(product_id)
 
 
 @app.post("/reviews/{product_id}")
@@ -107,85 +133,60 @@ def add_review(product_id: str, review: Review):
         rating = random_rating()
         product_name = PRODUCT_NAMES.get(product_id, product_id)
 
-        rating_key = f"rating:{product_id}"
+        # Persist stats
+        stats_key = f"rating:{product_id}"
+        r.hincrby(stats_key, "sum", rating)
+        r.hincrby(stats_key, "count", 1)
+
+        # Persist latest 4 reviews
         review_key = f"reviews:{product_id}"
-
-        # stats infinies persistantes
-        r.hincrby(rating_key, "sum", rating)
-        r.hincrby(rating_key, "count", 1)
-
-        stats = r.hgetall(rating_key)
-        avg = int(stats["sum"]) / int(stats["count"])
-
-        # garder seulement 4 derniers commentaires
         r.lpush(review_key, json.dumps({
             "message": review.message,
             "rating": rating,
             "author": random_author(),
             "timestamp": int(time.time())
         }))
-        r.ltrim(review_key, 0, 3)
+        r.ltrim(review_key, 0, DISPLAY_LIMIT - 1)
 
+        # Prometheus metrics
         REVIEW_POSTS_TOTAL.labels(
             product_id=product_id,
             product_name=product_name
         ).inc()
 
-        REVIEW_AVERAGE.labels(
-            product_id=product_id,
-            product_name=product_name
-        ).set(avg)
-
-        REVIEW_COUNT.labels(
-            product_id=product_id,
-            product_name=product_name
-        ).set(int(stats["count"]))
+        sync_metrics(product_id)
 
         REQUEST_LATENCY.observe(time.time() - start)
 
         return build_response(product_id)
 
+
 @app.get("/reviews/{product_id}")
 def get_reviews(product_id: str):
     with lock:
-        rating_key = f"rating:{product_id}"
-        review_key = f"reviews:{product_id}"
-        product_name = PRODUCT_NAMES.get(product_id, product_id)
+        stats = r.hgetall(f"rating:{product_id}")
 
-        stats = r.hgetall(rating_key)
-
+        # Seed automatique si produit jamais vu
         if not stats:
-            total = 0
-
             for _ in range(4):
                 rating = random_rating()
-                total += rating
 
-                r.lpush(review_key, json.dumps({
+                stats_key = f"rating:{product_id}"
+                r.hincrby(stats_key, "sum", rating)
+                r.hincrby(stats_key, "count", 1)
+
+                review_key = f"reviews:{product_id}"
+                r.rpush(review_key, json.dumps({
                     "message": random.choice(sample_reviews),
                     "rating": rating,
                     "author": random_author(),
                     "timestamp": int(time.time())
                 }))
 
-            r.hset(rating_key, mapping={
-                "sum": total,
-                "count": 4
-            })
-
-            avg = total / 4
-
-            REVIEW_AVERAGE.labels(
-                product_id=product_id,
-                product_name=product_name
-            ).set(avg)
-
-            REVIEW_COUNT.labels(
-                product_id=product_id,
-                product_name=product_name
-            ).set(4)
+            sync_metrics(product_id)
 
         return build_response(product_id)
+
 
 @app.get("/metrics")
 def metrics():
