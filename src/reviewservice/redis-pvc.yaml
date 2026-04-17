@@ -34,6 +34,11 @@ spec:
       containers:
       - name: redis
         image: redis:alpine
+        args:
+          - --save
+          - "60 1"
+          - --appendonly
+          - "yes"
         ports:
         - containerPort: 6379
         resources:
