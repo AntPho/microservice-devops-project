@@ -53,6 +53,7 @@ PRODUCT_NAMES = {
     "9SIQT8TOJO": "Bamboo Glass Jar",
     "6E92ZMYYFZ": "Mug",
     "PATATE1": "Grosse Patate",
+    "BANANE1": "Banane",
 }
 
 # 🎲 Génération de données

@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cart
+spec:
+  clusterIP: None
+  selector:
+    app: redis-cart
+  ports:
+    - port: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cart
+spec:
+  serviceName: redis-cart
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: redis-cart
+
+  template:
+    metadata:
+      labels:
+        app: redis-cart
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args:
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - "everysec"
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

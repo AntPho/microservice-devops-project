@@ -119,6 +119,18 @@
 	  	"nanos": 990000000
 	  },
 	  "categories": ["Patate"]
+	},
+	{
+	  "id": "BANANE1",
+	  "name": "Banane",
+	  "description": "Une simple banane.",
+	  "picture": "/static/img/products/Banane.jpg",
+	  "priceUsd": {
+	  	"currencyCode": "USD",
+	  	"units": 19,
+	  	"nanos": 990000000
+	  },
+	  "categories": ["Banane"]
 	}
     ]
 }
